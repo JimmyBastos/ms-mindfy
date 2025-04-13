@@ -74,23 +74,26 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
         Route::post('contents/{content}/speech', function (Content $content, GenerationService $generationService) {
             $content->load(['creators', 'categories', 'blocks']);
 
-            $block = $content->blocks()->first();
+            $content->blocks()->each(function ($block) use ($content, $generationService) {
+                $blockContent = $block->content;
 
-            $audio = $generationService->generateAudioSpeech([
-                'lang' => 'pt-BR',
-                'text' => $block->content['text']['pt']
-            ]);
+                if (!isset($blockContent['audio'])) {
+                    $audio = $generationService->generateAudioSpeech([
+                        'lang' => 'pt-BR',
+                        'text' => $blockContent['text']['pt']
+                    ]);
 
-            $path = "/contents/$content->id/block/$block->id/pt-BR/" . md5($block->id) . ".aac";
+                    $path = "/contents/$content->id/block/$block->id/pt-BR/" . md5($block->id) . ".aac";
 
-            Storage::disk()->put($path, $audio, ['visibility' => 'public']);
+                    Storage::disk()->put($path, $audio, ['visibility' => 'public']);
 
-            $newContent                = $block->content;
-            $newContent['audio']['pt'] = Storage::temporaryUrl($path, now()->addDays(2));
+                    $blockContent['audio']['pt'] = Storage::temporaryUrl($path, now()->addDays(3));
 
-            $block->content = $newContent;
+                    $block->content = $blockContent;
 
-            $block->save();
+                    $block->save();
+                }
+            });
 
             return $content->load('blocks');
         });
