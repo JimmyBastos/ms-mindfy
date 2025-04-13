@@ -71,21 +71,28 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
             return $content->refresh()->load(['creators', 'categories', 'blocks']);
         });
 
-
         Route::post('contents/{content}/speech', function (Content $content, GenerationService $generationService) {
             $content->load(['creators', 'categories', 'blocks']);
 
-
             $block = $content->blocks()->first();
 
-            $generationService->generateAudioSpeech([
+            $audio = $generationService->generateAudioSpeech([
                 'lang' => 'pt-BR',
-                'text' => $block->content->text->pt
+                'text' => $block->content['text']['pt']
             ]);
 
+            $path = "/contents/$content->id/block/$block->id/pt-BR/" . md5($block->id) . ".aac";
 
+            Storage::disk()->put($path, $audio, ['visibility' => 'public']);
 
-            return $content->refresh()->load(['creators', 'categories', 'blocks']);
+            $newContent                = $block->content;
+            $newContent['audio']['pt'] = Storage::temporaryUrl($path, now()->addDays(2));
+
+            $block->content = $newContent;
+
+            $block->save();
+
+            return $content->load('blocks');
         });
 
         Route::post('contents/{content}/expand-old', function (Content $content, GenerationService $generationService) {

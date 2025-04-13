@@ -42,13 +42,15 @@ class Content extends BaseModel
     public function blocks(): MorphMany
     {
         return $this->morphMany(Media::class, 'owner')
-            ->where('tag', 'block');
+            ->where('tag', 'block')
+            ->orderBy('priority');
     }
 
     public function attachments(): MorphMany
     {
         return $this->morphMany(Media::class, 'owner')
-            ->where('tag', 'attachment');
+            ->where('tag', 'attachment')
+            ->orderBy('priority');
     }
 
     public function creators(): BelongsToMany

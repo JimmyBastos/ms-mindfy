@@ -70,12 +70,11 @@ class GenerationService
      * @throws ConnectionException
      * @throws RequestException
      */
-    public function generateAudioSpeech(array $data = []): Collection
+    public function generateAudioSpeech(array $data = []): string
     {
         return $this->client()
-            ->post('/6572adda-6454-4209-a09c-edd7ac5b9ce0/contents/expand',
+            ->post('/6700d0e3-d206-4f1e-a82a-393809078db2/audio/speech',
                 ['lang' => $data['lang'], 'text' => $data['text']])
-            ->throw()
-            ->json();
+            ->throw()->body();
     }
 }
