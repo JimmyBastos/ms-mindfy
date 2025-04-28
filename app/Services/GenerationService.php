@@ -34,12 +34,24 @@ class GenerationService
      * @throws ConnectionException
      * @throws RequestException
      */
-    public function generateContent(array $query = []): array
+    public function searchContent(array $query = []): array
     {
         return $this->client()
             ->post('/2d1c13c9-196c-45cd-a14e-d2e39c370253/books/search', $query)
             ->throw()
             ->json();
+    }
+
+    /**
+     * @throws ConnectionException
+     * @throws RequestException
+     */
+    public function generateContentCover(array $content = []): object
+    {
+        return $this->client()
+            ->post('/db66a20e-26f9-4a17-a7e5-7af9612d4dfd/contents/cover', $content)
+            ->throw()
+            ->object();
     }
 
     /**

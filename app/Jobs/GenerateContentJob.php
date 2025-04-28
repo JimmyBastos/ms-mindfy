@@ -28,7 +28,7 @@ class GenerateContentJob implements ShouldQueue
     public function handle(GenerationService $generationService): void
     {
         DB::transaction(function () use ($generationService) {
-            $contentData = $generationService->generateContent([
+            $contentData = $generationService->searchContent([
                 'title' => $this->title
             ]);
 

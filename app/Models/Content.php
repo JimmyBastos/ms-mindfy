@@ -30,7 +30,8 @@ class Content extends BaseModel
     public function cover(): MorphOne
     {
         return $this->morphOne(Media::class, 'owner')
-            ->where('tag', 'cover');
+            ->where('tag', 'cover')
+            ->orderBy('priority');
     }
 
     public function preview(): MorphOne

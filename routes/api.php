@@ -14,9 +14,9 @@ set_time_limit(0);
 Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
     Route::group(['prefix' => 'generation'], function () {
         Route::post('contents', function (Request $request, GenerationService $generationService) {
-            $content = DB::transaction(function () use ($generationService) {
-                $contentData = $generationService->generateContent([
-                    'title' => $this->title
+            $content = DB::transaction(function () use ($generationService, $request) {
+                $contentData = $generationService->searchContent([
+                    'title' => $request->title
                 ]);
 
                 /** @var Content $content */
@@ -31,7 +31,9 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
                         $creatorData
                     );
 
-                    $content->creators()->attach($creator->id);
+                    if (!$creator->creators()->find($creator->id)) {
+                        $content->creators()->attach($creator->id);
+                    }
                 }
 
                 foreach ($contentData['categories'] as $categoryData) {
@@ -49,11 +51,9 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
         });
 
         Route::post('contents/{content}/expand', function (Content $content, GenerationService $generationService) {
-            $content->load(['creators', 'categories', 'blocks']);
-
             if (!$content->blocks()->exists()) {
                 $contentOutlineData = $generationService->generateContentOutline(
-                    $content->toArray()
+                    $content->load(['creators', 'categories', 'blocks'])->toArray()
                 );
 
                 $content->blocks()->createMany(
@@ -69,6 +69,31 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
             }
 
             return $content->refresh()->load(['creators', 'categories', 'blocks']);
+        });
+
+        Route::post('contents/{content}/cover', function (Content $content, GenerationService $generationService) {
+            $contentCover = $generationService->generateContentCover(
+                $content->load(['creators'])->toArray()
+            );
+
+            $image = file_get_contents($contentCover->image->url);
+
+            $path = "/contents/$content->id/cover/" . md5($content->id) . "-" . now()->toTimeString() . ".jpg";;
+
+            Storage::disk()->put($path, $image, 'public');
+
+            $content->cover()->update(['priority' => 1]);;
+
+            $content->cover()->create([
+                'tag'         => 'cover',
+                'type'        => 'image',
+                'name'        => [],
+                'description' => [],
+                'priority'    => 0,
+                'content'     => ["url" => Storage::temporaryUrl($path, now()->addDay())],
+            ]);
+
+            return $content->load(['cover']);
         });
 
         Route::post('contents/{content}/speech', function (Content $content, GenerationService $generationService) {
@@ -87,7 +112,7 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
 
                     Storage::disk()->put($path, $audio, ['visibility' => 'public']);
 
-                    $blockContent['audio']['pt'] = Storage::temporaryUrl($path, now()->addDays(3));
+                    $blockContent['audio']['pt'] = Storage::url($path, now()->addDays(3));
 
                     $block->content = $blockContent;
 
@@ -95,7 +120,7 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
                 }
             });
 
-            return $content->load('blocks');
+            return $content->load(['blocks']);
         });
 
         Route::post('contents/{content}/expand-old', function (Content $content, GenerationService $generationService) {
