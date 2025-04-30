@@ -31,7 +31,7 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
                         $creatorData
                     );
 
-                    if (!$creator->creators()->find($creator->id)) {
+                    if (!$content->creators()->find($creator->id)) {
                         $content->creators()->attach($creator->id);
                     }
                 }
@@ -76,11 +76,18 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
                 $content->load(['creators'])->toArray()
             );
 
-            $image = file_get_contents($contentCover->image->url);
+            if ($contentCover->image->base64) {
+                $image = base64_decode($contentCover->image->base64);
 
-            $path = "/contents/$content->id/cover/" . md5($content->id) . "-" . now()->toTimeString() . ".jpg";;
+                $f         = finfo_open();
+                $mime_type = finfo_buffer($f, $image, FILEINFO_MIME_TYPE);
+            } else {
+                $image = file_get_contents($contentCover->image->url);
+            }
 
-            Storage::disk()->put($path, $image, 'public');
+            $path = "/contents/$content->id/cover/" . md5($content->id) . "-" . now()->toTimeString() . ".webp";;
+
+            Storage::disk()->put($path, $image, ['visibility' => 'public']);
 
             $content->cover()->update(['priority' => 1]);;
 
@@ -90,7 +97,7 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
                 'name'        => [],
                 'description' => [],
                 'priority'    => 0,
-                'content'     => ["url" => Storage::temporaryUrl($path, now()->addDay())],
+                'content'     => ["url" => Helpers::getPublicStorageUrl($path)],
             ]);
 
             return $content->load(['cover']);
@@ -112,7 +119,7 @@ Route::group(['namespace' => 'App\Http\Controllers\Api'], function () {
 
                     Storage::disk()->put($path, $audio, ['visibility' => 'public']);
 
-                    $blockContent['audio']['pt'] = Storage::url($path, now()->addDays(3));
+                    $blockContent['audio']['pt'] = Helpers::getPublicStorageUrl($path);
 
                     $block->content = $blockContent;
 
